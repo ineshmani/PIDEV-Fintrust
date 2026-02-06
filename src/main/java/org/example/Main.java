@@ -2,88 +2,68 @@ package org.example;
 
 import services.userService;
 import models.user;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 public class Main {
+
     public static void main(String[] args) {
 
-        userService userService = new userService();
+        userService us = new userService();
 
-        // -----------------------------
-        // 1️⃣ Ajouter plusieurs utilisateurs uniquement s'ils n'existent pas
-        // -----------------------------
-        int kycId = 100;
-        user[] utilisateurs = new user[]{
-                new user(kycId++, "Hmani", "Ines", "ines.hmani@example.com", "0612340001", "user", "pass123", "pending", LocalDateTime.now()),
-                new user(kycId++, "Hmidi", "Karam", "karam.hmidi@example.com", "0612340002", "user", "pass123", "pending", LocalDateTime.now()),
-                new user(kycId++, "Hajji", "Feryel", "feryel.hajji@example.com", "0612340003", "user", "pass123", "pending", LocalDateTime.now())
+        System.out.println("Connexion réussie à la base de données !");
+
+        // ===== Nouveaux utilisateurs =====
+        user[] users = {
+            new user(100, "Hmani", "Ines", "ines.hmani@example.com", "0612340001", "user", "pass1", "PENDING", LocalDateTime.now()),
+            new user(101, "Hmidi", "Karam", "karam.hmidi@example.com", "0612340002", "admin", "pass2", "PENDING", LocalDateTime.now()),
+            new user(102, "Hajji", "Feryel", "feryel.hajji@example.com", "0612340003", "user", "pass3", "PENDING", LocalDateTime.now()),
+            new user(103, "Sassi", "Kenza", "kenza.sassi@example.com", "0612340004", "user", "pass4", "PENDING", LocalDateTime.now())
         };
 
-        for (user u : utilisateurs) {
-            if (userService.findByKycId(u.getCurrentKycId()) == null) {
-                boolean succes = userService.create(u);
-                if (succes) {
-                    System.out.println("✅ Utilisateur ajouté : " + u.getPrenom() + " " + u.getNom());
-                } else {
-                    System.out.println("❌ Échec de l'ajout de : " + u.getPrenom() + " " + u.getNom());
-                }
+        // Ajouter seulement si l'utilisateur n'existe pas
+        for (user u : users) {
+            us.create(u);
+        }
+
+        // ===== Liste des utilisateurs =====
+        List<user> all = us.findAll();
+        System.out.println("\nListe des utilisateurs :");
+        for (user u : all) {
+            System.out.println(u.getNom() + " " + u.getPrenom() + " | Role: " + u.getRole() + " | KYC: " + u.getKycStatus());
+        }
+
+        // ===== Vérifier rôle et redirection =====
+        for (user u : all) {
+            String role = us.getRoleByEmail(u.getEmail());
+            if ("admin".equals(role)) {
+                System.out.println(u.getNom() + " est admin → redirection page ADMIN");
             } else {
-                System.out.println("ℹ️ Utilisateur déjà existant : " + u.getPrenom() + " " + u.getNom());
+                System.out.println(u.getNom() + " est utilisateur standard → redirection page USER");
             }
         }
 
-        // -----------------------------
-        // 2️⃣ Modifier le mot de passe d'un utilisateur existant (Karam)
-        // -----------------------------
-        int kycToUpdate = 101; // KYC de Karam
-        String nouveauMotDePasse = "newPass456";
-
-        user utilisateurAModifier = userService.findByKycId(kycToUpdate);
-        if (utilisateurAModifier != null) {
-            utilisateurAModifier.setPassword(nouveauMotDePasse);
-            boolean succes = userService.update(utilisateurAModifier);
-            if (succes) {
-                System.out.println("✅ Mot de passe modifié pour : "
-                        + utilisateurAModifier.getPrenom() + " "
-                        + utilisateurAModifier.getNom());
-            } else {
-                System.out.println("❌ Échec de la modification du mot de passe.");
-            }
-        } else {
-            System.out.println("❌ Utilisateur non trouvé avec KYC ID=" + kycToUpdate);
+        // ===== Modifier KYC pour Ines =====
+        user ines = us.findByEmail("ines.hmani@example.com");
+        if (ines != null) {
+            us.changeKycStatus(ines.getId(), "VALIDATED");
+            System.out.println("KYC modifié pour : " + ines.getNom());
         }
 
-        // -----------------------------
-        // 3️⃣ Supprimer l'utilisateur Feryel
-        // -----------------------------
-        int kycToDelete = 102; // KYC de Feryel
-        user utilisateurASupprimer = userService.findByKycId(kycToDelete);
-        if (utilisateurASupprimer != null) {
-            boolean succes = userService.delete(utilisateurASupprimer.getId());
-            if (succes) {
-                System.out.println("✅ Utilisateur supprimé : " + utilisateurASupprimer.getPrenom() + " " + utilisateurASupprimer.getNom());
-            } else {
-                System.out.println("❌ Échec de la suppression de : " + utilisateurASupprimer.getPrenom());
-            }
-        } else {
-            System.out.println("ℹ️ Utilisateur non trouvé pour suppression avec KYC ID=" + kycToDelete);
+        // ===== Supprimer Feryel =====
+        user feryel = us.findByEmail("feryel.hajji@example.com");
+        if (feryel != null) {
+            us.delete(feryel.getId());
+            System.out.println("Utilisateur supprimé : " + feryel.getNom());
         }
 
-        // -----------------------------
-        // 4️⃣ Afficher tous les utilisateurs restants dans la base
-        // -----------------------------
-        System.out.println("\n📋 Liste des utilisateurs dans la base :");
-        List<user> allUsers = userService.findAll();
-        for (user u : allUsers) {
-            System.out.println("KYC ID: " + u.getCurrentKycId() +
-                    ", Nom: " + u.getNom() +
-                    ", Prénom: " + u.getPrenom() +
-                    ", Email: " + u.getEmail() +
-                    ", NumTel: " + u.getNumTel() +
-                    ", Role: " + u.getRole() +
-                    ", Statut KYC: " + u.getKycStatus() +
-                    ", Créé le: " + u.getCreatedAt());
+        // ===== Liste finale =====
+        all = us.findAll();
+        System.out.println("\nListe finale des utilisateurs :");
+        for (user u : all) {
+            System.out.println(u.getNom() + " " + u.getPrenom() + " | Role: " + u.getRole() + " | KYC: " + u.getKycStatus());
         }
     }
 }
